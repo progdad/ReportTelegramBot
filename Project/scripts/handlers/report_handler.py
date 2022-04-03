@@ -1,3 +1,5 @@
+import time
+
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 
@@ -8,6 +10,7 @@ from pyrogram.raw.types import InputReportReasonOther, InputPeerChannel
 # This Project Tools
 from database.api_data import BotDB
 from handlers.fsm_states.links_state import FSMlinks
+from handlers.fsm_states.state_timeout import timeout
 from handlers.setup_userbot import SetupUserBotSession
 from core_buttons.inline_buttons import backStateButton, menuButtons
 from logger_settings.logger_setup import set_logger
@@ -36,6 +39,7 @@ class ReportTool(SetupUserBotSession, BotDB):
                 "Достатньо просто переслати мені повідомлення з каналу @stoprussiachannel, " \
                 "а я вилучу всі необхідні посилання."
             await call.message.answer(text=answer, reply_markup=backStateButton)
+            self.state_links_start = time.time()
             await FSMlinks.links.set()
         except Exception as exception:
             await error_function(call.message, logger, exception)
@@ -52,6 +56,10 @@ class ReportTool(SetupUserBotSession, BotDB):
         logger = await set_logger(namespace="ReportTool.handle_report_process", uid=message.chat.id)
         logger.info("starting the reports handler")
         try:
+            state_links_stop = time.time()
+            if await timeout(self.state_links_start, state_links_stop, message, state):
+                return
+
             links = await self.__parse_links(message)
             if await self.__is_user_reporting(message.chat.id):
                 await message.answer(text="Зараз кидаю скарги, не пишіть, будь ласка, нічого")

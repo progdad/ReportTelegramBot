@@ -13,6 +13,7 @@ from pyrogram.errors import SessionPasswordNeeded, PhoneCodeInvalid, PhoneCodeEx
 from core_buttons.inline_buttons import backInlineStateButton, backStateButton, menuButtons
 from database.api_data import BotDB
 from handlers.fsm_states.userbot_data_state import FSMuserbot
+from handlers.fsm_states.state_timeout import timeout
 from logger_settings.error_answer import error_function
 from logger_settings.logger_setup import set_logger
 
@@ -34,13 +35,12 @@ class SetupUserBotSession(BotDB):
         dp.register_message_handler(self.__password, state=FSMuserbot.password)
 
         self.userbot_client_data = {}
-        self.state_wait_starts = {}
+        self._state_wait_starts = {}
 
         scripts_starts = os.getcwd().find("scripts")
         self.user_sessions_path = os.getcwd()[:scripts_starts] + "user_sessions/"
 
-    @staticmethod
-    async def userbot_using_data_agreement(call: types.CallbackQuery):
+    async def userbot_using_data_agreement(self, call: types.CallbackQuery):
         logger = await set_logger(namespace="SetupUserBotSession.userbot_using_data_agreement",
                                   uid=call.message.chat.id)
         logger.info("user is on agreement stage")
@@ -48,6 +48,7 @@ class SetupUserBotSession(BotDB):
             answer = "Уважно прочитайте інструкцію https://telegra.ph/%D0%86nstrukc%D1%96ya-koristuvannya-botom-blockru-bot-04-02 " \
                      "та починайте налаштування."
             await call.message.answer(text=answer, reply_markup=startOrBack)
+            self._state_wait_starts["start_or_back"] = time.time()
             await FSMuserbot.start_or_back.set()
         except Exception as exception:
             await error_function(call.message, logger, exception)
@@ -56,11 +57,16 @@ class SetupUserBotSession(BotDB):
         logger = await set_logger(namespace="SetupUserBotSession.start_setting_up", uid=call.message.chat.id)
         logger.info("user has started setting up userbot")
         try:
+            sob_wait_start = self._state_wait_starts["start_or_back"]
+            sob_wait_stop = time.time()
+            if await timeout(sob_wait_start, sob_wait_stop, call.message, state):
+                return
+            
             await state.finish()
             await call.message.answer(text="Починаю налаштування. Будьте уважні !")
             await call.message.answer(text="Введіть api_id: ", reply_markup=backStateButton)
 
-            self.state_wait_starts["api_id"] = time.time()
+            self._state_wait_starts["api_id"] = time.time()
             await FSMuserbot.api_id.set()
         except Exception as exception:
             await error_function(call.message, logger, exception)
@@ -69,16 +75,16 @@ class SetupUserBotSession(BotDB):
         logger = await set_logger(namespace="SetupUserBotSession.__api_id", uid=message.chat.id)
         logger.info(f"sent api_id - {message.text}")
         try:
-            api_id_wait_start = self.state_wait_starts["api_id"]
+            api_id_wait_start = self._state_wait_starts["api_id"]
             api_id_wait_stop = time.time()
-            if await self.__timeout(api_id_wait_start, api_id_wait_stop, message, state):
+            if await timeout(api_id_wait_start, api_id_wait_stop, message, state):
                 return
 
             self.userbot_client_data["api_id"] = message.text
             await state.finish()
             await message.answer(text="Введіть api_hash: ", reply_markup=backStateButton)
 
-            self.state_wait_starts["api_hash"] = time.time()
+            self._state_wait_starts["api_hash"] = time.time()
             await FSMuserbot.api_hash.set()
         except Exception as exception:
             await error_function(message, logger, exception)
@@ -87,9 +93,9 @@ class SetupUserBotSession(BotDB):
         logger = await set_logger(namespace="SetupUserBotSession.__api_hash", uid=message.chat.id)
         logger.info(f"sent api_hash - {message.text}")
         try:
-            api_hash_wait_start = self.state_wait_starts["api_hash"]
+            api_hash_wait_start = self._state_wait_starts["api_hash"]
             api_hash_wait_stop = time.time()
-            if await self.__timeout(api_hash_wait_start, api_hash_wait_stop, message, state):
+            if await timeout(api_hash_wait_start, api_hash_wait_stop, message, state):
                 return
 
             self.userbot_client_data["api_hash"] = message.text
@@ -97,7 +103,7 @@ class SetupUserBotSession(BotDB):
             await message.answer(text="Введіть номер телефону: ",
                                  reply_markup=backStateButton)
 
-            self.state_wait_starts["phone_number"] = time.time()
+            self._state_wait_starts["phone_number"] = time.time()
             await FSMuserbot.phone_number.set()
         except Exception as exception:
             await error_function(message, logger, exception)
@@ -106,9 +112,9 @@ class SetupUserBotSession(BotDB):
         logger = await set_logger(namespace="SetupUserBotSession.__phone_number", uid=message.chat.id)
         logger.info(f"sent phone_number")
         try:
-            phone_number_wait_start = self.state_wait_starts["phone_number"]
+            phone_number_wait_start = self._state_wait_starts["phone_number"]
             phone_number_wait_stop = time.time()
-            if await self.__timeout(phone_number_wait_start, phone_number_wait_stop, message, state):
+            if await timeout(phone_number_wait_start, phone_number_wait_stop, message, state):
                 return
 
             self.userbot_client_data["phone_number"] = message.text
@@ -141,7 +147,7 @@ class SetupUserBotSession(BotDB):
 
             logger.info("confirmation code was sent successfully")
 
-            self.state_wait_starts["auth_code"] = time.time()
+            self._state_wait_starts["auth_code"] = time.time()
             await FSMuserbot.auth_code.set()
         except Exception as exception:
             await error_function(message, logger, exception)
@@ -149,9 +155,9 @@ class SetupUserBotSession(BotDB):
     async def __auth_code(self, message: types.Message, state: FSMContext):
         logger = await set_logger(namespace="SetupUserBotSession.__auth_code", uid=message.chat.id)
         try:
-            auth_code_wait_start = self.state_wait_starts["auth_code"]
+            auth_code_wait_start = self._state_wait_starts["auth_code"]
             auth_code_wait_stop = time.time()
-            if await self.__timeout(auth_code_wait_start, auth_code_wait_stop, message, state):
+            if await timeout(auth_code_wait_start, auth_code_wait_stop, message, state):
                 return
 
             await state.finish()
@@ -178,7 +184,7 @@ class SetupUserBotSession(BotDB):
             logger.info("two-step verification is required")
             await message.answer(text="Вкажіть хмарний пароль: ",
                                  reply_markup=backStateButton)
-            self.state_wait_starts["password"] = time.time()
+            self._state_wait_starts["password"] = time.time()
             await FSMuserbot.password.set()
         except PhoneCodeInvalid:
             logger.info("authentication code is invalid")
@@ -194,9 +200,9 @@ class SetupUserBotSession(BotDB):
     async def __password(self, message: types.Message, state: FSMContext):
         logger = await set_logger(namespace="SetupUserBotSession.__password", uid=message.chat.id)
         try:
-            password_wait_start = self.state_wait_starts["password"]
+            password_wait_start = self._state_wait_starts["password"]
             password_wait_stop = time.time()
-            if await self.__timeout(password_wait_start, password_wait_stop, message, state):
+            if await timeout(password_wait_start, password_wait_stop, message, state):
                 return
 
             try:
@@ -218,12 +224,3 @@ class SetupUserBotSession(BotDB):
                 await state.finish()
         except Exception as exception:
             await error_function(message, logger, exception)
-
-    @staticmethod
-    async def __timeout(start_time: float, stop_time: float, message: types.Message, state: FSMContext):
-        if (stop_time - start_time) >= 90:
-            await state.finish()
-            await message.answer(text="Таймаут очікування")
-            await message.answer(text="Виберіть наступну дію: ", reply_markup=menuButtons)
-            return True
-        return False

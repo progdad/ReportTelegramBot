@@ -118,11 +118,14 @@ class ReportTool(SetupUserBotSession, BotDB):
                     continue
 
                 channel = InputPeerChannel(channel_id=channel_id, access_hash=access_hash)
+                report_text = "This is a propaganda channel of the Russian Federation, " \
+                              "which is part of the information war against Ukraine. " \
+                              "Pay attention to this and block this channel, which spreads fake information, " \
+                              "demoralizes and deceives people, and helps to kill Ukrainians."
                 report_peer = ReportPeer(
                     peer=channel,
                     reason=InputReportReasonOther(),
-                    message="This channel either spreads fake information about the war in ukraine "
-                            "or this channel leaves dislocations of Ukrainian Armed Forces. Or both."
+                    message=report_text
                 )
                 await client.send(report_peer)
                 await message.answer(f"Скарга на канал @{channel_un} надіслана.")

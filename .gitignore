@@ -5,3 +5,5 @@ venv/
 #Project data
 *.log
 *.session
+
+Project/scripts/database/database.db

@@ -111,7 +111,6 @@ class ReportTool(SetupUserBotSession, BotDB):
                 api_hash=api_hash
             )
             await client.start()
-            await client.get_users(message.chat.id)
 
             logger.info("client instance has been started")
 
@@ -126,10 +125,10 @@ class ReportTool(SetupUserBotSession, BotDB):
                     continue
 
                 channel = InputPeerChannel(channel_id=channel_id, access_hash=access_hash)
-                report_text = "This is a propaganda channel of the Russian Federation, " \
-                              "which is part of the information war against Ukraine. " \
-                              "Pay attention to this and block this channel, which spreads fake information, " \
-                              "demoralizes and deceives people, and helps to kill Ukrainians."
+                report_text = "This channel spreads fake news, misleads people, thereby inciting aggression " \
+                              "and calling for war between nations. It contains posts with violent threats to the life " \
+                              "and health of Ukrainian citizens. Under international law, this is regarded as terrorism. " \
+                              "Therefore we ask You to block it as soon as possible!"
                 report_peer = ReportPeer(
                     peer=channel,
                     reason=InputReportReasonOther(),

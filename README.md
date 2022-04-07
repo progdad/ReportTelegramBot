@@ -9,7 +9,7 @@
 
 .
 
-# PROJECT STRUCTURE AND :
+# PROJECT STRUCTURE:
 
 **1** **_logs/_** directory is just logs. It contains .log files for each user who has at least started the bot. 
 Each log file name is just a user id in telegram - _<user_id>.log_
